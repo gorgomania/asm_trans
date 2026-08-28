@@ -14,7 +14,7 @@ g++ -o asm_trans main.cpp
 ./asm_trans
 ```
 
-Input file: `code.txt`. The following files are created on success:
+Input file: `code.txt`. An example input file is included in the repository. The following files are created on success:
 - `listing.txt` — listing with addresses and machine code
 - `object_code.txt` — object code in `H/T/E` format
 
