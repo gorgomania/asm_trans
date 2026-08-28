@@ -1,8 +1,7 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <Windows.h>
 
 //Константа, определяющая количество поддерживаемых команд
 const int comands_num = 4;
@@ -56,7 +55,7 @@ int define_comand(char* input_line, int position, char** table) {
 			int i = position;
 			while (input_line[i] != ' ' && input_line[i] != '\0' && input_line[i] == table[number][i - position])
 				i++;
-			if (i - position == strlen(table[number]) && (input_line[i] == ' ' || input_line[i] == '\0'))
+			if (i - position == (int)strlen(table[number]) && (input_line[i] == ' ' || input_line[i] == '\0'))
 				return number;
 		}
 	}
@@ -78,7 +77,7 @@ names_tree* find_name(names_tree* table, char * var) {
 		while (table) {
 			if (strcmp(var, table->name) == 0)
 				return table;
-			else if (strcmp(var, table->name) == -1)
+			else if (strcmp(var, table->name) < 0)
 				table = table->left;
 			else
 				table = table->right;
@@ -124,7 +123,7 @@ names_tree* add_name(names_tree* top, char* var, int op_bit, char** comands_tabl
 						code = 1;
 						break;
 					}
-					else if (strcmp(new_variable->name, temp->name) == -1) {
+					else if (strcmp(new_variable->name, temp->name) < 0) {
 						if (temp->left == NULL) {
 							temp->left = new_variable;
 							break;
@@ -206,6 +205,9 @@ char* read_line(FILE* input_file) {
 			i++;
 		} while (input_line[i - 1] != '\n' && !feof(input_file));
 		input_line[i - 1] = '\0';
+		// Strip \r for Windows CRLF files
+		if (i >= 2 && input_line[i - 2] == '\r')
+			input_line[i - 2] = '\0';
 	}
 	return input_line;
 }
@@ -465,14 +467,14 @@ index_prop* define_index(char* str, int pos, int reg, int &op_bit, names_tree* n
 int define_directive(char* input_line, int pos, char** table) {
 	int number, directive_num = -1, arg_pos = 0, i;
 	if (input_line) {
-		while (input_line[pos] != '\0') {
+		while (pos < 0 || input_line[pos] != '\0') {
 			pos++;
 			for (number = 0; number < directives_num; number++) {
 				i = pos;
 				while (input_line[i] != ' ' && input_line[i] != '\0' && input_line[i] == table[number][i - pos])
 					i++;
 				//Определена директива
-				if (i - pos == strlen(table[number]) && (input_line[i] == ' ' || input_line[i] == '\0')) {
+				if (i - pos == (int)strlen(table[number]) && (input_line[i] == ' ' || input_line[i] == '\0')) {
 					//Директива до этого не определялась
 					if (directive_num == -1) {
 						//Директива в положенном месте
@@ -580,16 +582,16 @@ comand_prop* comand_mov(char* input_line, int position, names_tree *names_table,
 				return NULL;
 			comand = 0xC7 << len_com(index_object->index);
 			comand += index_object->index;
-			sprintf_s(str, "%X", comand);
-			strcpy_s(output_line, 9, str);
+			sprintf(str, "%X", comand);
+			strcpy(output_line, str);
 			comand = 0x0;
 		}
 		//Первый операнд переменная
 		else if (first_reg_num == -1) {
 			if (op_bit == 8)
-				strcpy_s(output_line, 9, "C6060000\0");
+				strcpy(output_line, "C6060000");
 			else
-				strcpy_s(output_line, 9, "C7060000\0");
+				strcpy(output_line, "C7060000");
 		}
 		//Первый операнд регистр
 		else {
@@ -606,15 +608,15 @@ comand_prop* comand_mov(char* input_line, int position, names_tree *names_table,
 			comand <<= 8;
 			comand += number;
 		}
-		sprintf_s(str, "%X", comand);
+		sprintf(str, "%X", comand);
 		if (first_reg_num == -1 || index)
-			strcat_s(output_line, 16, str);
+			strcat(output_line, str);
 		else
-			strcpy_s(output_line, strlen(str) + 1, str);
+			strcpy(output_line, str);
 	}
 	else {
 		//Гипотеза, что второй операнд регистр
-		if (input_line[i + 3] == '\0') {
+		if (input_line[i + 2] != '\0' && input_line[i + 3] == '\0') {
 			if (input_line[i + 2] == 'L' || input_line[i + 2] == 'H') {
 				//Несовместимый размер операндов
 				if (op_bit == 16) {
@@ -730,8 +732,8 @@ comand_prop* comand_mov(char* input_line, int position, names_tree *names_table,
 				}
 			}
 		}
-		sprintf_s(str, "%X", comand);
-		strcpy_s(output_line, strlen(str) + 1, str);
+		sprintf(str, "%X", comand);
+		strcpy(output_line, str);
 	}
 	//Дополнение объекта
 	if (index_object && index_object->variable)
@@ -801,7 +803,7 @@ comand_prop* comand_xchg(char* input_line, int position, names_tree* names_table
 		return NULL;
 	}
 	//Гипотеза, что второй операнд регистр
-	if (input_line[i + 3] == '\0') {
+	if (input_line[i + 2] != '\0' && input_line[i + 3] == '\0') {
 		if (input_line[i + 2] == 'L' || input_line[i + 2] == 'H') {
 			//Несовместимый размер операндов
 			if (op_bit == 16) {
@@ -888,15 +890,15 @@ comand_prop* comand_xchg(char* input_line, int position, names_tree* names_table
 				code = 1;
 				return NULL;
 			}
-		} 
+		}
 	}
-	sprintf_s(str, "%X", comand);
+	sprintf(str, "%X", comand);
 	//Дополнение объекта
 	if (index_object && index_object->variable)
 		object->variable = index_object->variable;
 	object->output_line = (char*)malloc((strlen(str) + 2)*sizeof(char));
 	if (object->output_line)
-		strcpy_s(object->output_line, strlen(str) + 2, str);
+		strcpy(object->output_line, str);
 	return object;
 }
 //Функция обработки команды DEC
@@ -947,7 +949,7 @@ comand_prop* comand_dec(char* input_line, int position, names_tree* names_table,
 	}
 	else {
 		//Гипотеза, что первый операнд регистр
-		if (strlen(input_line) == position + 6) {
+		if (strlen(input_line) == (size_t)(position + 6)) {
 			if (input_line[position + 5] == 'L' || input_line[position + 5] == 'H') {
 				reg_num = define_reg(input_line, reg_8bit, position + 4);
 				if (reg_num != -1)
@@ -986,13 +988,13 @@ comand_prop* comand_dec(char* input_line, int position, names_tree* names_table,
 			comand += modregrm(3, 1, reg_num);
 		}
 	}
-	sprintf_s(str, "%X", comand);
+	sprintf(str, "%X", comand);
 	//Дополнение объекта
 	if (index_object && index_object->variable)
 		object->variable = index_object->variable;
 	object->output_line = (char*)malloc((strlen(str) + 2) * sizeof(char));
 	if (object->output_line)
-		strcpy_s(object->output_line, strlen(str) + 2, str);
+		strcpy(object->output_line, str);
 	return object;
 }
 //Функция обработки команды LOOP
@@ -1042,17 +1044,17 @@ comand_prop* comand_loop(char* input_line, int position, names_tree* names_table
 	}
 	comand = 0xE2;
 	comand <<= 8;
-	sprintf_s(str, "%X", comand);
+	sprintf(str, "%X", comand);
 	//Дополнение объекта
 	object->output_line = (char*)malloc((strlen(str) + 2) * sizeof(char));
 	if (object->output_line)
-		strcpy_s(object->output_line, strlen(str) + 2, str);
+		strcpy(object->output_line, str);
 	return object;
 }
 //Функция определения строки в таблице
 void define_table_line(char** table, int pos, const char* line) {
 	if (table[pos])
-		strcpy_s(table[pos], 16, line);
+		strcpy(table[pos], line);
 }
 //Очистка дерева
 void tree_clean(names_tree* table) {
@@ -1177,13 +1179,10 @@ void error_print(int code, int line_num, names_tree* table, objects_list* list) 
 		break;
 	}
 	garbage_clean(table, list);
-	system("pause");
 	return;
 }
 //Главная функция
-void main() {
-	//Настрока консоли
-	SetConsoleOutputCP(1251);
+int main() {
 	//Определение таблиц
 	char** comands_table, ** directives_table, * input_line, * output_line, str[10], *variable, *label = NULL;
 	names_tree* names_table = NULL, * name;
@@ -1196,8 +1195,7 @@ void main() {
 	directives_table = (char**)malloc(directives_num * 16 * sizeof(char*));
 	if (directives_table) {
 		for (i = 0; i < directives_num; i++)
-			if (directives_table[i])
-				directives_table[i] = (char*)malloc(16 * sizeof(char));
+			directives_table[i] = (char*)malloc(16 * sizeof(char));
 		define_table_line(directives_table, 0, "SEGMENT");
 		define_table_line(directives_table, 1, "ORG");
 		define_table_line(directives_table, 2, "INT");//Исключение
@@ -1210,31 +1208,27 @@ void main() {
 	comands_table = (char**)malloc(comands_num * 16 * sizeof(char*));
 	if (comands_table) {
 		for (i = 0; i < comands_num; i++)
-			if (comands_table[i])
-				comands_table[i] = (char*)malloc(16 * sizeof(char));
+			comands_table[i] = (char*)malloc(16 * sizeof(char));
 		define_table_line(comands_table, 0, "MOV");
 		define_table_line(comands_table, 1, "XCHG");
 		define_table_line(comands_table, 2, "DEC");
 		define_table_line(comands_table, 3, "LOOP");
 	}
 	//Работа с данными из входного файла
-	fopen_s(&input_file, "code.txt", "rt");
+	input_file = fopen("code.txt", "r");
 	if (!input_file) {
 		puts("Ошибка: Не удалось открыть входной файл");
-		system("pause");
-		return;
+		return 1;
 	}
-	fopen_s(&listing_file, "listing.txt", "wt");
+	listing_file = fopen("listing.txt", "w");
 	if (!listing_file) {
 		puts("Ошибка: Не удалось создать файл листинга");
-		system("pause");
-		return;
+		return 1;
 	}
-	fopen_s(&object_file, "object_code.txt", "wt");
+	object_file = fopen("object_code.txt", "w");
 	if (!object_file) {
 		puts("Ошибка: Не удалось создать файл объектного кода");
-		system("pause");
-		return;
+		return 1;
 	}
 	//Первый проход транслятора (Считывание строк, построение таблицы имён, проверка структуры программы, обработка директив)
 	while (!feof(input_file) && !end) {
@@ -1256,29 +1250,29 @@ void main() {
 			position = i + 1;
 			//Определение имени метки
 			label = define_var_inline(input_line, 0);
-			if (strlen(label) < i) {
+			if ((int)strlen(label) < i) {
 				error_print(0, line_num, names_table, objects_beg);
-				return;
+				return 1;
 			}
 			//Добавление метки в таблицу имён и обработка возможных ошибок
 			names_table = add_name(names_table, label, 0, comands_table, code);
 			if (code) {
 				error_print(code + 16, line_num, names_table, objects_beg);
-				return;
+				return 1;
 			}
 		}
 		//Если помимо метки в строке имеются команды
-		if (position != strlen(input_line)) {
+		if (position != (int)strlen(input_line)) {
 			//Поиск директив в строке
 			directive_num = define_directive(input_line, position - 1, directives_table);
 			//Обработка возможных ошибок определения директивы
 			if (directive_num == -2) {
 				error_print(20, line_num, names_table, objects_beg);
-				return;
+				return 1;
 			}
 			if (directive_num == -3) {
 				error_print(21, line_num, names_table, objects_beg);
-				return;
+				return 1;
 			}
 			//Директива ends уже определена
 			if (ends) {
@@ -1287,7 +1281,7 @@ void main() {
 					end = true;
 				else {
 					error_print(22, line_num, names_table, objects_beg);
-					return;
+					return 1;
 				}
 			}
 			//Директива int 21h уже определена
@@ -1301,7 +1295,7 @@ void main() {
 					names_table = add_name(names_table, variable, op_bit, comands_table, code);
 					if (code) {
 						error_print(code + 16, line_num, names_table, objects_beg);
-						return;
+						return 1;
 					}
 					//Поиск второго пробела в исходной строке
 					i = position;
@@ -1315,12 +1309,12 @@ void main() {
 					number = define_value(input_line, i + 1, op_bit, code);
 					if (code) {
 						error_print(code, line_num, names_table, objects_beg);
-						return;
+						return 1;
 					}
 					//Добавление строки в листинг
-					sprintf_s(str, "%X", number);
+					sprintf(str, "%X", number);
 					//Добавление ведущих нулей если их не хватает
-					while (strlen(str) < op_bit / 4) {
+					while (strlen(str) < (size_t)(op_bit / 4)) {
 						int length = strlen(str);
 						i = length;
 						while (i > 0) {
@@ -1332,20 +1326,20 @@ void main() {
 					}
 					output_line = (char*)malloc(strlen(str) + 2);
 					if (output_line)
-						strcpy_s(output_line, strlen(str) + 2, str);
+						strcpy(output_line, str);
 				}
 				//Определена директива ENDS, проверка имени сегмента
 				else if (directive_num == 5) {
 					variable = define_var_inline(input_line, position);
 					if (strcmp(variable, names_table->name)) {
 						error_print(23, line_num, names_table, objects_beg);
-						return;
+						return 1;
 					}
 					ends = true;
 				}
 				else {
 					error_print(24, line_num, names_table, objects_beg);
-					return;
+					return 1;
 				}
 			}
 			//Имя сегмента уже определено
@@ -1359,16 +1353,16 @@ void main() {
 							number = define_value(input_line, position + 4, op_bit, code);
 							if (number != 8448) {
 								error_print(25, line_num, names_table, objects_beg);
-								return;
+								return 1;
 							}
 							int21h = true;
 							output_line = (char*)malloc(6 * sizeof(char));
 							if (output_line)
-								strcpy_s(output_line, 6 * sizeof(char), "CD21");
+								strcpy(output_line, "CD21");
 						}
 						else {
 							error_print(26, line_num, names_table, objects_beg);
-							return;
+							return 1;
 						}
 					}
 				}
@@ -1378,13 +1372,13 @@ void main() {
 						offset = define_value(input_line, position + 4, op_bit, code);
 						if (offset != 1 && offset != 0) {
 							error_print(27, line_num, names_table, objects_beg);
-							return;
+							return 1;
 						}
 						offset *= 256;
 					}
 					else {
 						error_print(28, line_num, names_table, objects_beg);
-						return;
+						return 1;
 					}
 				}
 			}
@@ -1394,12 +1388,12 @@ void main() {
 				names_table = add_name(names_table, variable, 1, comands_table, code);
 				if (code) {
 					error_print(code + 16, line_num, names_table, objects_beg);
-					return;
+					return 1;
 				}
 			}
 			else {
 				error_print(29, line_num, names_table, objects_beg);
-				return;
+				return 1;
 			}
 		}
 		//Добавление элемента в список объектного кода
@@ -1415,7 +1409,7 @@ void main() {
 	//Если не было завершения программы
 	if (!end) {
 		error_print(31, line_num, names_table, objects_beg);
-		return;
+		return 1;
 	}
 	//Второй проход транслятора (Построение объектного кода команд, рассчёт смещений, определение адреса переменных)
 	temp = objects_beg->next->next;
@@ -1433,7 +1427,7 @@ void main() {
 			name->address = offset;
 		}
 		//Если кроме метки в строке ничего нет
-		if (strlen(temp->input_line) == temp->position) {
+		if (strlen(temp->input_line) == (size_t)temp->position) {
 			temp = temp->next;
 			continue;
 		}
@@ -1467,7 +1461,7 @@ void main() {
 					break;
 				case -1:
 					error_print(30, line_num, names_table, objects_beg);
-					return;
+					return 1;
 			}
 			if (comand) {
 				temp->output_line = comand->output_line;
@@ -1478,14 +1472,14 @@ void main() {
 			else {
 				if (code) {
 					error_print(code, line_num, names_table, objects_beg);
-					return;
+					return 1;
 				}
 			}
 		}
 		temp = temp->next;
 	}
 	//Третий проход транслятора (Определение в объектном коде команд адреса переменных, вывод листинга в файл и объектного кода в другой файл)
-	fprintf_s(object_file, "H %s %X\n", names_table->name, offset - default_offset);
+	fprintf(object_file, "H %s %X\n", names_table->name, offset - default_offset);
 	temp = objects_beg;
 	line_num = 1;
 	while (temp) {
@@ -1500,8 +1494,8 @@ void main() {
 					name = find_name(names_table, temp->variable);
 					if (name) {
 						int pos = strstr(temp->output_line, "0000") - temp->output_line;
-						sprintf_s(str, "%X", name->address);
-						for (int j = 1; j <= strlen(str); j++) {
+						sprintf(str, "%X", name->address);
+						for (int j = 1; j <= (int)strlen(str); j++) {
 							temp->output_line[pos + 4 - j] = str[strlen(str) - j];
 						}
 					}
@@ -1511,30 +1505,29 @@ void main() {
 					name = find_name(names_table, temp->variable);
 					number = name->address - temp->offset;
 					number -= 2;
-					sprintf_s(str, "%X", number);
+					sprintf(str, "%X", number);
 					if (strlen(str) > 1)
 						temp->output_line[2] = str[strlen(str) - 2];
 					temp->output_line[3] = str[strlen(str) - 1];
 				}
 			}
 			number = strlen(temp->output_line) / 2;
-			fprintf_s(object_file, "T %X %X %s\n", temp->offset, number, temp->output_line);
-			fprintf_s(listing_file, "[%4d]%8X:%-16s\t%s\n", line_num, temp->offset, temp->output_line, temp->input_line);
+			fprintf(object_file, "T %X %X %s\n", temp->offset, number, temp->output_line);
+			fprintf(listing_file, "[%4d]%8X:%-16s\t%s\n", line_num, temp->offset, temp->output_line, temp->input_line);
 		}
 		else if (temp->label)
-			fprintf_s(listing_file, "[%4d]%8X:%-16s\t%s\n", line_num, temp->offset, "", temp->input_line);
+			fprintf(listing_file, "[%4d]%8X:%-16s\t%s\n", line_num, temp->offset, "", temp->input_line);
 		else
-			fprintf_s(listing_file, "[%4d]%8s:%-16s\t%s\n", line_num, "", "", temp->input_line);
+			fprintf(listing_file, "[%4d]%8s:%-16s\t%s\n", line_num, "", "", temp->input_line);
 		line_num++;
 		temp = temp->next;
 	}
-	fprintf_s(object_file, "E %X\n", default_offset);
+	fprintf(object_file, "E %X\n", default_offset);
 	fclose(input_file);
 	fclose(listing_file);
 	fclose(object_file);
 	//Очистка мусора
 	garbage_clean(names_table, objects_beg);
 	puts("Программа отработала успешно");
-	system("pause");
-	return;
+	return 0;
 }

@@ -1,0 +1,82 @@
+seg segment
+org 100h
+mov ax, dx
+mov al, dl
+mov cx, dx
+mov dl, cl
+mov ax, 0FFFEh
+mov ax, 100
+mov ax, 101b
+mov al, 0FFh
+MOV A,0FFFEH
+mov ax, -32768
+mov al, -80h
+mov a, -100b
+mov ax, "a"
+mov ax, "ab"
+mov al, '!'
+mov a, 'ue'
+MOV A, Ax
+MOV AX, A
+mov dx, a
+mov a, cx
+mov al, b
+mov ah, b
+mov b, bh
+mov b, al
+mov b, 20h
+MOV [si], 0fffeh
+MOV [si + a], 0fffeh
+MOV [si + "a"], 0fffeh
+MOV [si + 4], 0fffeh
+MOV [di + 128], 0fffeh
+MOV [di + 0FFh], 0fffeh
+MOV [di - 0FFfh], 0fffeh
+mov [si], ax
+mov [di + 0fffh], cx
+mov [si - 3h], dx
+mov [si + 10], dl
+mov [si + a], ax
+mov [si + "ax"], ax
+mov [si + b], al
+mov [si + 'b'], al
+mov ax, [si]
+mov cx, [di + 0fffh]
+mov dx, [si - 3h]
+mov dl, [si + 10]
+mov ax, [si + a]
+mov ax, [si + 'ax']
+mov al, [si + b]
+mov al, [si + "b"]
+xchg al, ah
+xchg ax, dx
+xchg dx, ax
+xchg dx, cx
+xchg ah, ch
+xchg a, ax
+xchg aX, A
+xchg b, al
+xchg al, b
+xchg dx, a
+xchg a, cx
+xchg b, ah
+xchg bl, b
+xchg [si], ax
+xchg [di + 0fffh], cx
+xchg [si - 3h], dx
+xchg [si + 10], dl
+xchg [si + a], ax
+xchg [si + b], al
+xchg ax, [si]
+xchg cx, [di + 0fffh]
+xchg dx, [si - 3h]
+xchg dl, [si + 10]
+xchg ax, [si + a]
+xchg ax, [si + 'ax']
+xchg al, [si + b]
+xchg al, [si + "b"]
+int 21h
+b db 1
+a dw 1
+seg ends
+end
