@@ -145,11 +145,16 @@ names_tree* add_name(names_tree* top, char* var, int op_bit, char** comands_tabl
 }
 //Функция считывания строки из файла с преобразованием к верхнему регистру и устранением лишних пробелов
 char* read_line(FILE* input_file) {
-	char* input_line = (char*)malloc(64 * sizeof(char));
+	const int buf_size = 256;
+	char* input_line = (char*)malloc(buf_size * sizeof(char));
 	int i = 0, begin_coma = 0;
 	bool begin_spaces = true, one_space = false, colon = false;
 	if (input_line) {
 		do {
+			if (i >= buf_size - 2) {
+				while (!feof(input_file) && fgetc(input_file) != '\n');
+				break;
+			}
 			if (!begin_coma)
 				input_line[i] = toupper(fgetc(input_file));
 			else
@@ -508,13 +513,13 @@ comand_prop* comand_mov(char* input_line, int position, names_tree *names_table,
 	char* output_line, str[16];
 	output_line = (char*)malloc(16 * sizeof(char));
 	object = (comand_prop*)malloc(sizeof(comand_prop));
-	if (!object) {
+	if (!output_line || !object) {
+		free(output_line);
+		free(object);
 		code = 32;
 		return NULL;
 	}
 	object->variable = NULL;
-	if (!output_line)
-		return NULL;
 	//Если первый операнд непосредственный, то возвращает код ошибки
 	if (is_value(input_line[i])) {
 		code = 2;
@@ -608,11 +613,13 @@ comand_prop* comand_mov(char* input_line, int position, names_tree *names_table,
 			comand <<= 8;
 			comand += number;
 		}
-		sprintf(str, "%X", comand);
-		if (first_reg_num == -1 || index)
+		if (first_reg_num == -1 || index) {
+			sprintf(str, op_bit == 16 ? "%04X" : "%02X", comand);
 			strcat(output_line, str);
-		else
+		} else {
+			sprintf(str, "%X", comand);
 			strcpy(output_line, str);
+		}
 	}
 	else {
 		//Гипотеза, что второй операнд регистр
@@ -1061,6 +1068,7 @@ void tree_clean(names_tree* table) {
 	if (table) {
 		tree_clean(table->left);
 		tree_clean(table->right);
+		free(table->name);
 		free(table);
 	}
 }
@@ -1071,6 +1079,8 @@ void garbage_clean(names_tree* table, objects_list* list) {
 	temp = list;
 	while (temp) {
 		list = list->next;
+		free(temp->input_line);
+		free(temp->output_line);
 		free(temp);
 		temp = list;
 	}
@@ -1424,7 +1434,8 @@ int main() {
 		if (temp->position) {
 			name = find_name(names_table, temp->label);
 			//Определение адреса метки
-			name->address = offset;
+			if (name)
+				name->address = offset;
 		}
 		//Если кроме метки в строке ничего нет
 		if (strlen(temp->input_line) == (size_t)temp->position) {
@@ -1437,7 +1448,8 @@ int main() {
 			if (temp->variable) {
 				name = find_name(names_table, temp->variable);
 				//Сохранение адреса с разворотом байтов
-				name->address = offset % 256 * 256 + offset / 256;
+				if (name)
+					name->address = offset % 256 * 256 + offset / 256;
 				temp->variable = NULL;
 			}
 			offset += strlen(temp->output_line) / 2;
@@ -1505,10 +1517,10 @@ int main() {
 					name = find_name(names_table, temp->variable);
 					number = name->address - temp->offset;
 					number -= 2;
-					sprintf(str, "%X", number);
-					if (strlen(str) > 1)
-						temp->output_line[2] = str[strlen(str) - 2];
-					temp->output_line[3] = str[strlen(str) - 1];
+					unsigned char offset_byte = (unsigned char)(number & 0xFF);
+					sprintf(str, "%02X", offset_byte);
+					temp->output_line[2] = str[0];
+					temp->output_line[3] = str[1];
 				}
 			}
 			number = strlen(temp->output_line) / 2;
