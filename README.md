@@ -96,7 +96,7 @@ E <start_address_hex>
 |   21 | Invalid directive context                                                 |
 |   22 | ENDS directive must be followed by END                                    |
 |   23 | Invalid segment name                                                      |
-|   24 | INT 21H must be followed by DB, DW, or ENDS                              |
+|   24 | INT 21H must be followed by DB, DW, or ENDS                               |
 |   25 | Interrupt instruction only accepts the value 21H                          |
 |   26 | ORG block must end with INT 21H                                           |
 |   27 | ORG expression must be 0 or 256                                           |
